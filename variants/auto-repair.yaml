@@ -1,0 +1,56 @@
+# Auto repair variant — automotive service and repair environments.
+# Applies on top of the egocentric or manipulation profile.
+#
+# Use case: Auto shop demonstrations, dealership service bays,
+# roadside assistance, body work. Technicians use lifts, power tools,
+# and diagnostic equipment. Lighting swings between dark underbody
+# and bright shop floor. Tools are constant.
+
+name: auto-repair
+base_profile: egocentric
+
+overrides:
+
+  - code: safety-sharp-object
+    name: Unsafe sharp object
+    pass: "<0.6"          # wrenches, screwdrivers, pliers are constant — only flag anomalous
+    flag: "0.6–0.85"
+    reject: ">=0.85"
+    note: Hand tools and power tools are expected in every frame. Flag only if presence is anomalous (e.g. unsecured cutting disc).
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=8"           # engine bays are tight, vibration from power tools
+    flag: "3–8"
+    reject: "<3"
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    pass: "0.08–0.90"     # dark underbody to bright shop floor, drop lights cause hot spots
+    flag: "0.04–0.94"
+    reject: "<0.04"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "120–3600"      # repair tasks run long — up to 1hr
+    flag: "60–120"
+    reject: "<60"
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.15"         # consented technicians, but customers may walk through service bay
+    flag: "0.15–0.35"
+    reject: ">=0.35"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.15"         # shop conversation expected, but customer vehicle/payment info must be scrubbed
+    flag: "0.15–0.3"
+    reject: ">=0.3"
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=1.5"         # diagnostic and repair steps are slower than cooking or assembly
+    flag: "0.8–1.5"
+    reject: "<0.8"
+    note: "Narration should capture diagnostic reasoning and repair steps: check belt tension, remove alternator bolt, disconnect harness."

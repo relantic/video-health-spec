@@ -1,0 +1,73 @@
+version: "26.4"
+profile: egocentric
+variant: factory
+status: FLAG
+
+tool:
+  name: vhs-validate
+  version: "0.3.0"
+
+# A Build AI-style WebDataset packet. The collection is an S3 prefix
+# containing sharded tar files; each packet is addressed by the shared
+# sample key inside a shard using the `shard.tar#key` fragment form.
+# Per-asset properties (fps, codec, IMU rate, channel count, ...) live
+# in chore_017.yaml alongside the video and IMU inside the same shard.
+
+collection:
+  id: buildai-chores-2026q2
+  uri: s3://buildai/ego/chores/
+
+packet:
+  id: chore_017
+  uri: s3://buildai/ego/chores/shard-00042.tar#chore_017
+  assets:
+    - { uri: s3://buildai/ego/chores/shard-00042.tar#chore_017.mp4,  type: video }
+    - { uri: s3://buildai/ego/chores/shard-00042.tar#chore_017.imu,  type: imu }
+    - { uri: s3://buildai/ego/chores/shard-00042.tar#chore_017.yaml, type: annotation }
+  task:
+    maneuverability: coarse
+    description: Unloading dishwasher
+    narration_count: 4
+
+findings:
+
+  - type: video-health/egocentric/privacy-face-visible
+    severity: high
+    description: Identifiable face visible in 15% of frames
+    details:
+      attachments: []
+      verbatims: {}
+      derived:
+        face_ratio: 0.15
+        threshold: 0.10
+        confidence: 0.82
+        evidence_frames: [1820, 1890]
+        evidence_seconds: [60.7, 63.0]
+
+  - type: video-health/egocentric/quality-imu-desync
+    severity: medium
+    description: IMU drift of 18ms against video timestamps
+    details:
+      attachments: []
+      verbatims:
+        reference_stream: video
+        drifting_stream: imu
+      derived:
+        imu_sync_drift_ms: 18
+        threshold_ms: 10
+
+metrics:
+  duration_sec: 94.2
+  blur_score: 412.3
+  brightness: 0.38
+  face_ratio: 0.15
+  phone_ratio: 0.02
+  speech_ratio: 0.01
+  imu_rate_hz: 1000
+  imu_sync_drift_ms: 18
+  narration_density: 2.5
+
+timing:
+  total_sec: 5.1
+  decode_sec: 1.8
+  detection_sec: 3.0

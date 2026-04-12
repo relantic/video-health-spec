@@ -1,0 +1,59 @@
+# Construction variant — building sites, renovation, and structural work.
+# Applies on top of the egocentric or manipulation profile.
+#
+# Use case: Jobsite demonstrations for robot learning, safety training
+# footage, renovation walkthroughs. Helmets and PPE obscure faces.
+# Heavy machinery, power tools, and heights are constant. Dust, rain,
+# and variable daylight affect image quality. Sessions are long and
+# narration is coarse-grained.
+
+name: construction
+base_profile: egocentric
+
+overrides:
+
+  - code: safety-sharp-object
+    name: Unsafe sharp object
+    pass: "<0.7"          # saws, nail guns, rebar, angle grinders are standard
+    flag: "0.7–0.9"
+    reject: ">=0.9"
+    note: Construction sites are dense with sharp/heavy tools and materials. Only flag if anomalous (e.g. unsecured blade with no operator).
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=6"           # dust clouds, rain, vibration from machinery
+    flag: "2–6"
+    reject: "<2"
+    note: Airborne particulates and helmet-mounted camera vibration degrade sharpness beyond what the operator can control.
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    pass: "0.06–0.92"     # wide range — dark crawl spaces, midday sun, welding flash
+    flag: "0.03–0.96"
+    reject: "<0.03"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "180–7200"      # long sessions — up to 2hr shifts
+    flag: "60–180"
+    reject: "<60"
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.10"         # PPE covers most faces, but visitors and inspectors walk through
+    flag: "0.10–0.25"
+    reject: ">=0.25"
+    note: Hard hats and safety glasses reduce face visibility, but bystanders and inspectors are not always wearing PPE.
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.2"          # shouted instructions and radio chatter expected
+    flag: "0.2–0.4"
+    reject: ">=0.4"
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=1.0"         # tasks are long and coarse — carry beam, set form, pour concrete
+    flag: "0.5–1.0"
+    reject: "<0.5"
+    note: Construction steps are measured in minutes, not seconds. Narration density is naturally lower than assembly or cooking.

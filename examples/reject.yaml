@@ -1,0 +1,92 @@
+version: "26.4"
+profile: manipulation
+variant: high-precision
+status: REJECT
+
+tool:
+  name: vhs-validate
+  version: "0.3.0"
+
+packet:
+  id: factory_042
+  uri: factory_042/
+  assets:
+    - { uri: factory_042.mp4, type: video }
+    - { uri: factory_042.rlds, type: trajectory }
+  task:
+    maneuverability: fine
+    description: USB connector insertion
+    narration_count: 6
+  trajectory:
+    episode_count: 3
+    action_dim: 7
+    action_space: xyz_rpy_gripper
+    reward_type: sparse_binary
+    language_annotations: true
+
+findings:
+
+  - type: video-health/manipulation/privacy-face-visible
+    severity: critical
+    description: Identifiable face visible in 30% of frames — exceeds 25% reject threshold
+    details:
+      attachments: []
+      verbatims: {}
+      derived:
+        face_ratio: 0.30
+        threshold: 0.25
+        confidence: 0.87
+        evidence_frames: [6420, 6450]
+        evidence_seconds: [214.0, 215.0]
+
+  - type: video-health/manipulation/privacy-speech-audio
+    severity: critical
+    description: Speech detected in 42% of audio — ambient conversation not scrubbed
+    details:
+      attachments: []
+      verbatims: {}
+      derived:
+        speech_ratio: 0.42
+        threshold: 0.05
+
+  - type: video-health/manipulation/quality-spec-mismatch
+    severity: high
+    description: Resolution does not match spec
+    details:
+      attachments: []
+      verbatims:
+        observed_resolution: "1920x1080"
+        expected_resolution: "1408x1408"
+      derived: {}
+
+  - type: video-health/manipulation/egoexo-sparse-narration
+    severity: high
+    description: 6 narrations over 124.5s — 2.9/min, below 4.0/min high-precision target
+    details:
+      attachments: []
+      verbatims: {}
+      derived:
+        narration_density: 2.9
+        threshold: 4.0
+        narration_count: 6
+        duration_sec: 124.5
+
+metrics:
+  duration_sec: 124.5
+  width: 1920
+  height: 1080
+  fps: 30.0
+  blur_score: 612.8
+  brightness: 0.41
+  motion_score: 14.2
+  person_ratio: 0.98
+  face_ratio: 0.30
+  speech_ratio: 0.42
+  narration_density: 2.9
+  manipulation_ratio: 0.72
+
+timing:
+  total_sec: 8.4
+  decode_sec: 2.1
+  detection_sec: 5.8
+  narration_sec: 0.5

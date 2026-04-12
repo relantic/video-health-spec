@@ -1,0 +1,47 @@
+# Factory variant — industrial settings with consented workers.
+# Applies on top of the egocentric or manipulation profile.
+#
+# Use case: Build AI factory shifts, Turing teleoperation demos,
+# Human Archive industrial environments. Workers sign consent forms,
+# cameras are industrial-grade, sessions are long.
+
+name: factory
+base_profile: egocentric
+
+overrides:
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.25"         # relaxed — workers are consented
+    flag: "0.25–0.5"
+    reject: ">=0.5"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.2"          # relaxed — factory floor speech is expected, workers consented
+    flag: "0.2–0.4"
+    reject: ">=0.4"
+
+  - code: privacy-reflective-surface
+    name: Reflective surface exposing identifiable content
+    pass: "<0.1"          # relaxed — industrial surfaces, safety mirrors common
+    flag: "0.1–0.25"
+    reject: ">=0.25"
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=15"          # stricter than egocentric default (>=10) — industrial cameras should be sharp
+    flag: "8–15"
+    reject: "<8"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "120–3600"      # long sessions — up to 1hr shifts
+    flag: "60–120"
+    reject: "<60"
+
+  - code: quality-invalid-intrinsics
+    name: Camera intrinsics invalid
+    pass: true
+    reject: false
+    note: Industrial rigs must ship calibrated intrinsics (fisheye k1-k4, per Build AI standard)

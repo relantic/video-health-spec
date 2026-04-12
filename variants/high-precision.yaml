@@ -1,0 +1,41 @@
+# High-precision variant — stricter thresholds for fine-maneuverability tasks.
+# Applies on top of the manipulation profile.
+#
+# Use case: sub-millimeter assembly (USB insertion, snap-fit connectors,
+# threading, PCB soldering). Motion blur and focus softness that pass
+# in coarse-manipulation tasks are automatic rejects here.
+
+name: high-precision
+base_profile: manipulation
+
+overrides:
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=20"          # 2x stricter than default manipulation (>=10)
+    flag: "10–20"
+    reject: "<10"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "30–300"        # shorter clips for precision tasks
+    flag: "15–30"
+    reject: "<15"
+
+  - code: demo-jerky-motion
+    name: Jerky motion
+    pass: "<0.05"         # half the default tolerance
+    flag: "0.05–0.1"
+    reject: ">=0.1"
+
+  - code: demo-excessive-idle
+    name: Excessive idle time
+    pass: "<0.1"          # tighter — precision tasks should be dense
+    flag: "0.1–0.2"
+    reject: ">=0.2"
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=4.0"         # 2x density — every micro-step matters
+    flag: "2.0–4.0"
+    reject: "<2.0"

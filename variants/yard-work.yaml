@@ -1,0 +1,53 @@
+# Yard work variant — lawn care, gardening, landscaping.
+# Applies on top of the egocentric profile.
+#
+# Use case: Mowing, hedge trimming, raking, planting, weeding,
+# leaf blowing. Like home-chores but outdoor. Neighbors and property
+# boundaries create moderate privacy risk. Power tools are common.
+
+name: yard-work
+base_profile: egocentric
+
+overrides:
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=7"           # vibration from mowers/trimmers, sun glare
+    flag: "2–7"
+    reject: "<2"
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    pass: "0.1–0.9"       # outdoor — direct sun, tree shade, garage transitions
+    flag: "0.05–0.95"
+    reject: "<0.05"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "120–3600"      # yard tasks run 2min to 1hr
+    flag: "60–120"
+    reject: "<60"
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.08"         # neighbors, passersby, delivery workers may appear
+    flag: "0.08–0.2"
+    reject: ">=0.2"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.05"         # neighbor conversations, passing pedestrians
+    reject: ">=0.05"
+
+  - code: safety-sharp-object
+    name: Unsafe sharp object
+    pass: "<0.6"          # hedge trimmers, pruning shears, rakes are expected
+    flag: "0.6–0.85"
+    reject: ">=0.85"
+    note: Garden tools are expected. Flag only if anomalous (unsecured blade).
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=1.5"         # yard tasks are repetitive but should be annotated
+    flag: "0.8–1.5"
+    reject: "<0.8"

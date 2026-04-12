@@ -1,0 +1,45 @@
+# Home chores variant — tuned for crowdsourced household recordings.
+# Applies on top of the egocentric profile.
+#
+# Use case: Micro1-style gig worker recordings, 1X NEO training data,
+# DoorDash driver chore footage. iPhone-grade cameras in small apartments.
+# Privacy is paramount. Technical bar is lower (consumer hardware).
+
+name: home-chores
+base_profile: egocentric
+
+overrides:
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=8"           # consumer phones are decent but not industrial
+    flag: "3–8"
+    reject: "<3"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "60–180"        # Micro1 spec: 1-2 min clips, we allow up to 3
+    flag: "30–60"
+    reject: "<30"
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.05"         # stricter — home recordings capture family members
+    flag: "0.05–0.1"
+    reject: ">=0.1"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.02"         # near-zero — home conversations are high liability
+    reject: ">=0.02"
+
+  - code: privacy-reflective-surface
+    name: Reflective surface exposing identifiable content
+    pass: "<0.03"         # stricter — bathrooms, hallway mirrors
+    flag: "0.03–0.1"
+    reject: ">=0.1"
+
+  - code: quality-invalid-intrinsics
+    name: Camera intrinsics invalid
+    pass: true
+    flag: false           # downgrade to flag — iPhones have known fixed intrinsics

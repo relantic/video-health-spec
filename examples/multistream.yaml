@@ -1,0 +1,58 @@
+version: "26.4"
+profile: multiview
+status: FLAG
+
+tool:
+  name: vhs-validate
+  version: "0.3.0"
+
+packet:
+  id: take_042
+  uri: take_042/
+  assets:
+    - { uri: ego.mp4,       type: video }
+    - { uri: exo_left.mp4,  type: video }
+    - { uri: exo_right.mp4, type: video }
+    - { uri: wrist.mp4,     type: video }
+    - { uri: manifest.yaml, type: annotation }   # viewpoints live here
+
+# Per-asset properties (viewpoint, fps, duration, role) live in the
+# manifest.yaml sidecar above. The validator reads them at assessment
+# time and reports what it finds through findings[] and metrics below.
+
+findings:
+
+  - type: video-health/multiview/multistream-sync-drift
+    severity: high
+    description: 47ms drift between ego and exo_left (reference stream)
+    details:
+      attachments: []
+      verbatims:
+        reference_stream: ego
+        drifting_stream: exo_left
+      derived:
+        max_sync_drift_ms: 47
+        threshold_ms: 10
+        evidence_seconds: [60.0]
+
+  - type: video-health/multiview/egoexo-insufficient-view-overlap
+    severity: high
+    description: 45% overlap between ego and exo_right — wrist interaction partially occluded
+    details:
+      attachments: []
+      verbatims:
+        ego_stream: ego
+        exo_stream: exo_right
+        detail: hand enters blind spot at 30s
+      derived:
+        overlap_ratio: 0.45
+        threshold: 0.6
+        evidence_seconds: [30.0]
+
+metrics:
+  max_sync_drift_ms: 47
+  fps_spread: 0.0
+  frame_drop_ratio: 0.0005
+  duration_spread_sec: 0.3
+  overlap_ratio: 0.45
+  speech_ratio: 0.01

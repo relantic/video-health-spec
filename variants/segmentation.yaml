@@ -1,0 +1,67 @@
+# Segmentation variant — scene boundary and caption quality.
+# 6 add-on rules. Append to any profile that processes segmented video.
+#
+# Use case: long recordings (Micro1 chore sessions, Build AI factory shifts)
+# that are split into scenes/clips with per-scene captions.
+# These rules validate the segmentation itself, not the raw video.
+
+name: segmentation
+applies_to: any
+
+rules:
+
+  - code: segmentation-scene-too-short
+    name: Scene too short
+    metric: scene_min_sec
+    type: float
+    unit: seconds
+    pass: ">=3"
+    flag: "1–3"
+    reject: "<1"
+    note: Scenes under 1s are usually segmentation artifacts, not real task boundaries
+
+  - code: segmentation-scene-too-long
+    name: Scene too long
+    metric: scene_max_sec
+    type: float
+    unit: seconds
+    pass: "<=120"
+    flag: "120–300"
+    reject: ">300"
+    note: Scenes over 5min typically contain multiple tasks and need further splitting
+
+  - code: segmentation-generic-caption
+    name: Caption too generic
+    metric: caption_specificity
+    type: float
+    pass: ">=0.7"
+    flag: "0.4–0.7"
+    reject: "<0.4"
+    note: "\"Person does task\" is generic. \"Person unscrews jar lid with left hand\" is specific. Scored 0-1."
+
+  - code: segmentation-false-boundary
+    name: False scene boundary
+    metric: false_boundary_ratio
+    type: ratio
+    pass: "<0.05"
+    flag: "0.05–0.15"
+    reject: ">=0.15"
+    note: Boundaries placed where no real scene transition occurred
+
+  - code: segmentation-missing-boundary
+    name: Missing scene boundary
+    metric: missed_boundary_ratio
+    type: ratio
+    pass: "<0.05"
+    flag: "0.05–0.15"
+    reject: ">=0.15"
+    note: Real scene transitions that the segmenter failed to detect
+
+  - code: segmentation-low-coverage
+    name: Low scene coverage
+    metric: scene_coverage_ratio
+    type: ratio
+    pass: ">=0.95"
+    flag: "0.8–0.95"
+    reject: "<0.8"
+    note: Ratio of video duration covered by at least one scene. Gaps mean lost data.

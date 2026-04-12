@@ -1,0 +1,267 @@
+# Video Health Result Schema v26.4
+# Validates the output of any tool that produces a Video Health Spec result.
+#
+# The result envelope is a three-level data model:
+#   collection (optional dataset-level grouping) →
+#     packet (the review unit — a bag of aligned files)
+#       assets[] (the files themselves — uri + type only)
+# Asset annotations (fps, duration, codec, lens model, IMU rate, viewpoint, …)
+# are not inline schema fields. They live either in a sidecar JSON/YAML file
+# inside the packet or embedded in the asset file itself (MP4 atoms, EXIF,
+# RLDS metadata, …). Validators read them at assessment time and surface
+# what they find through `findings[].details.derived` and `metrics`.
+#
+# findings[] carries hierarchical `type` paths (video-health/{profile}/{code}),
+# `severity` (low/medium/high/critical), and a structured `details` object
+# (attachments / verbatims / derived).
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://videohealth.dev/result-schema.yaml"
+title: Video Health Result
+schemaVersion: "26.4"
+schemaVersionNote: "YY.M format — 26 = 2026, 4 = April"
+type: object
+
+required: [version, profile, status, packet, findings]
+
+properties:
+
+  version:
+    type: string
+    description: "Spec version in YY.M format (e.g. 26.4 = April 2026)"
+
+  profile:
+    type: string
+    description: Which profile was applied (e.g. base, egocentric, manipulation, multiview, pedestrian, delivery, aerial)
+
+  variant:
+    type: string
+    description: Optional variant applied on top of the profile (e.g. high-precision, home-chores)
+
+  status:
+    type: string
+    enum: [PASS, FLAG, REJECT]
+    description: "Overall status, derived from worst severity: any critical → REJECT, else any high/medium/low → FLAG, else PASS"
+
+  # ── Tool ──
+
+  tool:
+    type: object
+    description: Which tool produced this result
+    properties:
+      name:
+        type: string
+      version:
+        type: string
+      url:
+        type: string
+        format: uri
+
+  # ── Collection ──
+  # Optional dataset-level grouping. Points at the folder/prefix a packet was
+  # drawn from. Carries no profile/variant — those describe the review, not
+  # the data, and stay at the top level.
+
+  collection:
+    type: object
+    description: Optional dataset-level grouping the packet belongs to
+    properties:
+      id:
+        type: string
+        description: Stable identifier of the collection
+      uri:
+        type: string
+        description: Root URI where the collection lives (S3 prefix, GCS prefix, local path)
+
+  # ── Packet ──
+  # The review unit: a bag of aligned files reviewed together. Profile-
+  # specific annotation blocks (task, trajectory, navigation, flight) live
+  # inside the packet.
+
+  packet:
+    type: object
+    description: The review unit — a bag of aligned files reviewed together
+    required: [id, uri, assets]
+    properties:
+      id:
+        type: string
+        description: Stable identifier of the packet within its collection
+      uri:
+        type: string
+        description: |
+          Address of the packet. Folder form: `s3://bucket/folder/chore_017/`.
+          WebDataset-in-tar form: `s3://bucket/shard-00042.tar#chore_017`
+          (the URI fragment carries the sample key inside the shard).
+      assets:
+        type: array
+        minItems: 1
+        description: |
+          The aligned files that make up this review unit. Each item is
+          deliberately minimal: only `uri` and `type`. All other per-asset
+          properties (fps, duration, codec, rate_hz, viewpoint, lens model,
+          …) live in a sidecar file inside the packet or embedded in the
+          asset file itself; validators discover them at assessment time.
+        items:
+          type: object
+          required: [uri, type]
+          properties:
+            uri:
+              type: string
+              description: |
+                Address of the asset. Relative to `packet.uri` or absolute.
+                For assets inside a WebDataset tar, the fragment form
+                `shard.tar#chore_017.mp4` is the canonical addressing.
+            type:
+              type: string
+              description: |
+                Modality — open string. Common values: `video`, `imu`,
+                `depth`, `audio`, `trajectory`, `annotation`, `metadata`.
+                Not a closed enum so new modalities (lidar, event camera,
+                thermal, …) drop in without a schema bump.
+
+      # ── Profile-specific annotation blocks ──
+      # Each block is optional.
+
+      task:
+        type: object
+        description: Task granularity metadata
+        properties:
+          maneuverability:
+            type: string
+            enum: [coarse, fine]
+          description:
+            type: string
+          narration_count:
+            type: integer
+            description: Total timestamped micro-annotations in this packet
+
+      trajectory:
+        type: object
+        description: RLDS / Open X-Embodiment trajectory metadata
+        properties:
+          episode_count:
+            type: integer
+          action_dim:
+            type: integer
+            description: Dimensionality of action vector (7 for canonical OXE)
+          action_space:
+            type: string
+            description: "Action representation: xyz_rpy_gripper, joint_positions, end_effector_delta"
+          reward_type:
+            type: string
+            enum: [sparse_binary, dense, none]
+          language_annotations:
+            type: boolean
+
+      navigation:
+        type: object
+        description: Navigation metadata for pedestrian/delivery profiles
+        properties:
+          gps_fix_type:
+            type: string
+            enum: [gps, dgps, rtk, wifi, ble, none]
+          route_length_m:
+            type: number
+          surface_types:
+            type: array
+            items:
+              type: string
+
+      flight:
+        type: object
+        description: Flight metadata for aerial profile
+        properties:
+          altitude_m:
+            type: number
+            description: Mean altitude AGL in meters
+          aircraft_type:
+            type: string
+          gimbal_type:
+            type: string
+            enum: [2-axis, 3-axis, fixed, none]
+          wind_speed_ms:
+            type: number
+
+  # ── Findings ──
+  # Overall top-level `status` (PASS/FLAG/REJECT) is derived from the worst severity seen.
+
+  findings:
+    type: array
+    items:
+      type: object
+      required: [type, severity, description]
+      properties:
+        type:
+          type: string
+          pattern: "^video-health/[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$"
+          description: |
+            Hierarchical issue identifier: `video-health/{profile}/{code}`.
+            `video-health` is the domain; `{profile}` is the applied ruleset
+            (base, egocentric, manipulation, multiview); `{code}` is a
+            hyphenated, human-readable phrase prefixed by its category
+            (e.g. `quality-missing-moov`, `privacy-face-visible`,
+            `safety-sharp-object`).
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: |
+            Issue severity. `critical` maps to an overall REJECT verdict;
+            `high`, `medium`, and `low` map to FLAG.
+        description:
+          type: string
+          description: Human-readable explanation of the issue.
+        details:
+          type: object
+          description: Structured context for the issue.
+          properties:
+            attachments:
+              type: array
+              items:
+                type: string
+              description: |
+                File names relevant to this issue (e.g. extracted frames,
+                logs). Empty unless the validator dumped artifacts to disk.
+            verbatims:
+              type: object
+              additionalProperties:
+                type: string
+              description: |
+                Raw strings observed in the container or media that informed
+                this issue (e.g. `observed_codec: hevc`,
+                `missing_atom: moov`).
+            derived:
+              type: object
+              additionalProperties: true
+              description: |
+                Computed values, thresholds, confidences, and evidence
+                pointers (e.g. `blur_score: 3.2`, `threshold: 5.0`,
+                `confidence: 0.87`, `evidence_frames: [6420, 6450]`).
+                Validators are encouraged to include approximate
+                timestamps for frame-level issues via an
+                `evidence_timestamps_sec` array (seconds from video
+                start, matching the `evidence_frames` order).
+
+  # ── Metrics / Timing ──
+
+  metrics:
+    type: object
+    description: All measured metric values, keyed by metric name
+    additionalProperties:
+      type: number
+
+  timing:
+    type: object
+    description: How long each validation phase took
+    properties:
+      total_sec:
+        type: number
+      decode_sec:
+        type: number
+      detection_sec:
+        type: number
+      narration_sec:
+        type: number
+      trajectory_sec:
+        type: number
+    additionalProperties:
+      type: number

@@ -1,0 +1,37 @@
+version: "26.4"
+profile: egocentric
+status: PASS
+
+tool:
+  name: vhs-validate
+  version: "0.3.0"
+
+packet:
+  id: factory_042
+  uri: factory_042_proxy/
+  assets:
+    - { uri: factory_042_proxy.mp4, type: video }
+  task:
+    maneuverability: coarse
+    description: Box assembly on factory line
+    narration_count: 5
+
+# Clean result — no issues found. Asset-level details (fps, codec, lens
+# model, FOV) come from a sidecar or the file itself and are surfaced as
+# metrics below.
+findings: []
+
+metrics:
+  duration_sec: 124.5
+  width: 1408
+  height: 1408
+  fps: 30.0
+  fov_h_deg: 128
+  blur_score: 612.8
+  brightness: 0.41
+  motion_score: 14.2
+  person_ratio: 0.95
+  face_ratio: 0.00
+  phone_ratio: 0.00
+  speech_ratio: 0.00
+  narration_density: 2.5

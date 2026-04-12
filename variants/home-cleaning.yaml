@@ -1,0 +1,61 @@
+# Home cleaning variant — household cleaning and tidying tasks.
+# Applies on top of the egocentric profile.
+#
+# Use case: Robot learning from human demonstrations of vacuuming,
+# mopping, wiping surfaces, organizing shelves, doing laundry,
+# cleaning bathrooms. Privacy is critical — these are private homes
+# with family members, personal items, and sensitive spaces.
+
+name: home-cleaning
+base_profile: egocentric
+
+overrides:
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.03"         # very strict — family members, children, visitors
+    flag: "0.03–0.08"
+    reject: ">=0.08"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.02"         # near-zero — private home conversations
+    reject: ">=0.02"
+
+  - code: privacy-bathroom-visible
+    name: Bathroom fixtures visible
+    pass: "<0.15"         # relaxed — cleaning the bathroom requires showing it
+    flag: "0.15–0.4"
+    reject: ">=0.4"
+    note: Bathroom cleaning tasks will inherently show fixtures. Flag only when personal items (medicine cabinets, toiletries with labels) are prominent.
+
+  - code: privacy-reflective-surface
+    name: Reflective surface exposing identifiable content
+    pass: "<0.05"         # strict — mirrors, glass tables, appliance surfaces common in homes
+    flag: "0.05–0.15"
+    reject: ">=0.15"
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=8"           # consumer hardware, fast arm movements while scrubbing/wiping
+    flag: "3–8"
+    reject: "<3"
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    pass: "0.12–0.88"     # rooms vary — bright kitchens, dim closets, sunlit windows
+    flag: "0.06–0.93"
+    reject: "<0.06"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "60–600"        # up to 10min — full room cleaning
+    flag: "30–60"
+    reject: "<30"
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=2.0"         # cleaning steps are repetitive but should still be annotated
+    flag: "1.0–2.0"
+    reject: "<1.0"
+    note: "Narration should capture transitions: pick up cloth, wipe counter, rinse, move to next surface."

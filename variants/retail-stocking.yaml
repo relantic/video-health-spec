@@ -1,0 +1,51 @@
+# Retail stocking variant — store shelf stocking and inventory.
+# Applies on top of the egocentric profile.
+#
+# Use case: Retail robot training, shelf stocking demonstrations,
+# inventory counting. Indoor fluorescent lighting, lots of visible
+# text (labels, barcodes, prices), customers in aisles.
+
+name: retail-stocking
+base_profile: egocentric
+
+overrides:
+
+  - code: privacy-visible-text
+    name: Visible text detected
+    pass: "<0.4"          # product labels/barcodes are expected, not PII
+    flag: "0.4–0.6"
+    reject: ">=0.6"
+    note: >
+      Product labels, shelf tags, and barcodes are expected and desirable
+      for product recognition training. Only reject when employee
+      schedules, customer info, or proprietary pricing is visible.
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.05"         # strict — customers did not consent to recording
+    flag: "0.05–0.15"
+    reject: ">=0.15"
+
+  - code: privacy-person-closeup
+    name: Close-range person detected
+    pass: "<0.1"          # strict — customers walking past in tight aisles
+    flag: "0.1–0.25"
+    reject: ">=0.25"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.03"         # very strict — customer conversations in adjacent aisles
+    reject: ">=0.03"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "60–1800"       # stocking sessions — up to 30min for a section
+    flag: "30–60"
+    reject: "<30"
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=2.5"         # each product placement should be narrated
+    flag: "1.5–2.5"
+    reject: "<1.5"
+    note: "Narration should capture: pick item, scan barcode, place on shelf, face label forward."

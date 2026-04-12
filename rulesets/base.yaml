@@ -1,0 +1,315 @@
+# Base profile — any training video.
+# Codes carry their category as a prefix: quality-*, privacy-*, safety-*,
+# training-*, metadata-*. The validator emits the full path
+# `video-health/base/{code}` when an issue fires.
+
+rules:
+
+  # ── Technical Quality ──
+  #
+  # File / container integrity. Each code names exactly one failure mode the
+  # validator can detect. Most are boolean: the presence of the code in
+  # findings[] means the condition fired.
+
+  - code: quality-missing-moov
+    name: Missing 'moov' atom
+    metric: moov_present
+    type: bool
+    pass: true
+    reject: false
+
+  - code: quality-corrupt-header
+    name: Corrupt container header
+    metric: header_valid
+    type: bool
+    pass: true
+    reject: false
+
+  - code: quality-truncated-file
+    name: Truncated file
+    metric: file_complete
+    type: bool
+    pass: true
+    reject: false
+
+  - code: quality-no-keyframes
+    name: No keyframes
+    metric: keyframes_present
+    type: bool
+    pass: true
+    reject: false
+
+  - code: quality-gop-too-long
+    name: GOP too long
+    metric: max_gop_sec
+    type: float
+    pass: "<=10"
+    flag: ">10"
+
+  - code: quality-duplicate-frames
+    name: Duplicate frames detected
+    metric: duplicate_frame_count
+    type: int
+    pass: 0
+    flag: ">0"
+
+  - code: quality-timing-gaps
+    name: Timing gaps in sample table
+    metric: timing_gaps_present
+    type: bool
+    pass: false
+    flag: true
+
+  - code: quality-low-bitrate
+    name: Bitrate too low
+    metric: bit_rate
+    type: int
+    pass: ">=500000"
+    flag: "<500000"
+
+  - code: quality-high-bitrate
+    name: Bitrate too high
+    metric: bit_rate
+    type: int
+    pass: "<=50000000"
+    flag: ">50000000"
+
+  - code: quality-file-too-small
+    name: File below minimum size
+    metric: size_bytes
+    type: int
+    pass: ">=1024"
+    reject: "<1024"
+
+  - code: quality-ffprobe-failed
+    name: ffprobe failed to parse video
+    metric: ffprobe_ok
+    type: bool
+    pass: true
+    flag: false
+
+  - code: quality-validator-error
+    name: Validator encountered an error processing the file
+    metric: validator_ok
+    type: bool
+    pass: true
+    flag: false
+    note: |
+      Not a content issue — the validator itself hit a byte-limit or
+      pipeline exception. Still surfaced as a finding so callers see why
+      the file was not fully assessed.
+
+  # Codec / spec conformance.
+
+  - code: quality-spec-mismatch
+    name: Codec or resolution does not match spec
+    metric: spec_match
+    type: bool
+    pass: true
+    flag: false
+
+  - code: quality-variable-frame-rate
+    name: Variable frame rate
+    metric: vfr_detected
+    type: bool
+    pass: false
+    flag: true
+
+  - code: quality-irregular-gop
+    name: Irregular GOP structure
+    metric: gop_cv
+    type: float
+    pass: "<0.3"
+    flag: ">=0.3"
+
+  - code: quality-container-codec-mismatch
+    name: Container and codec do not match
+    metric: container_codec_match
+    type: bool
+    pass: true
+    flag: false
+
+  - code: quality-metadata-rotation
+    name: Display matrix rotation in container
+    metric: rotation_present
+    type: bool
+    pass: false
+    flag: true
+    note: Rotation metadata causes orientation ambiguity — some decoders auto-rotate, others don't
+
+  - code: quality-edit-list
+    name: Edit list present
+    metric: edit_list_present
+    type: bool
+    pass: false
+    flag: true
+    note: Edit lists (elst atom) can cause seek-to-zero issues and affect frame extraction in some decoders
+
+  - code: quality-multiple-video-tracks
+    name: Multiple video tracks
+    metric: video_track_count
+    type: int
+    pass: "1"
+    flag: ">1"
+    note: Multiple video tracks cause ambiguity in which stream to decode
+
+  - code: quality-blurry
+    name: Video is blurry
+    metric: blur_score
+    type: float
+    pass: ">=15"
+    flag: "5–15"
+    reject: "<5"
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    metric: brightness
+    type: float
+    pass: "0.2–0.8"
+    flag: "0.1–0.9"
+    reject: "<0.1"
+
+  - code: quality-lens-blocked
+    name: Lens obstruction
+    metric: blockage_ratio
+    type: ratio
+    pass: "<0.05"
+    flag: "<0.25"
+    reject: ">=0.25"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    metric: duration_sec
+    type: float
+    pass: "60–600"
+    flag: "30–60"
+    reject: "<30"
+
+  - code: quality-invalid-intrinsics
+    name: Camera intrinsics invalid
+    metric: intrinsics_valid
+    type: bool
+    pass: true
+    flag: false
+    note: Flag (not reject) in base — many consumer cameras have known fixed intrinsics. Stricter profiles reject.
+
+  # ── Privacy ──
+
+  - code: privacy-bathroom-visible
+    name: Bathroom visible
+    metric: bathroom_ratio
+    type: ratio
+    pass: "<0.05"
+    reject: ">=0.1"
+
+  - code: privacy-reflective-surface
+    name: Reflective surface exposing identifiable content
+    metric: reflective_ratio
+    type: ratio
+    pass: "<0.05"
+    flag: "0.05–0.15"
+    reject: ">=0.15"
+    note: Mirrors, windows, and polished surfaces exposing identifiable information
+
+  - code: privacy-phone-visible
+    name: Phone visible
+    metric: phone_ratio
+    type: ratio
+    pass: "<0.1"
+    flag: "0.1–0.3"
+    reject: ">=0.3"
+
+  - code: privacy-document-visible
+    name: Personal document visible
+    metric: document_ratio
+    type: ratio
+    pass: "<0.1"
+    flag: "0.1–0.2"
+    reject: ">=0.2"
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    metric: face_ratio
+    type: ratio
+    pass: "<0.1"
+    flag: "0.1–0.25"
+    reject: ">=0.25"
+
+  - code: privacy-person-closeup
+    name: Close-range person detected
+    metric: person_closeup_ratio
+    type: ratio
+    pass: "<0.25"
+    flag: "0.25–0.5"
+    note: Large person bounding box proxy — may fire on hands, arms, or torso, not only faces
+
+  - code: privacy-visible-text
+    name: Visible text detected
+    metric: text_frames_ratio
+    type: ratio
+    pass: "<0.1"
+    flag: "0.1–0.3"
+    reject: ">=0.3"
+    note: OCR-detected text on screens, documents, or packages — potential PII exposure
+
+  - code: privacy-screen-visible
+    name: Screen content visible
+    metric: screen_ratio
+    type: ratio
+    pass: "<0.3"
+    flag: "0.3–0.5"
+    reject: ">=0.5"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    metric: speech_ratio
+    type: ratio
+    pass: "<0.05"
+    reject: ">=0.05"
+    note: Ambient speech is a legal liability; strip or scrub audio unless required for task
+
+  # ── Safety ──
+
+  - code: safety-sharp-object
+    name: Unsafe sharp object
+    metric: sharp_object_ratio
+    type: ratio
+    pass: "<0.05"
+    flag: "0.05–0.1"
+    reject: ">=0.1"
+
+  # ── Training Value ──
+
+  - code: training-no-person-visible
+    name: No person visible
+    metric: person_ratio
+    type: ratio
+    pass: ">=0.3"
+    flag: "0.1–0.3"
+    reject: "<0.1"
+    note: Flags when no person (body, hands, arms) appears in enough frames. Softer than training-no-hands-visible.
+
+  - code: training-black-frames
+    name: Excessive black frames
+    metric: black_ratio
+    type: ratio
+    pass: "<0.1"
+    flag: "0.1–0.3"
+    reject: ">=0.3"
+
+  - code: training-frozen-video
+    name: Frozen / stuck video
+    metric: freeze_ratio
+    type: ratio
+    pass: "<0.2"
+    flag: "0.2–0.5"
+    reject: ">=0.5"
+
+  # ── Metadata ──
+
+  - code: metadata-mismatch
+    name: Metadata mismatch
+    metric: metadata_match
+    type: bool
+    pass: true
+    flag: false

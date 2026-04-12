@@ -1,0 +1,56 @@
+# Agriculture variant — outdoor farming, crop inspection, harvesting.
+# Applies on top of the egocentric profile.
+#
+# Use case: Crop monitoring, harvesting robot training, precision
+# agriculture. Wide sun exposure, dust, long field sessions, minimal
+# privacy concerns (remote fields), farm tools are expected.
+
+name: agriculture
+base_profile: egocentric
+
+overrides:
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=6"           # dust, pollen, rain, vibration from machinery
+    flag: "2–6"
+    reject: "<2"
+    note: Airborne particulates and machinery vibration degrade sharpness.
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    pass: "0.05–0.95"     # extreme range — direct sun to dark barn interiors
+    flag: "0.02–0.97"
+    reject: "<0.02"
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "180–7200"      # long field sessions — up to 2hr
+    flag: "60–180"
+    reject: "<60"
+
+  - code: privacy-face-visible
+    name: Identifiable face
+    pass: "<0.2"          # relaxed — remote fields, few bystanders
+    flag: "0.2–0.4"
+    reject: ">=0.4"
+
+  - code: privacy-speech-audio
+    name: Speech in audio track
+    pass: "<0.15"         # relaxed — machinery noise dominates, few bystanders
+    flag: "0.15–0.3"
+    reject: ">=0.3"
+
+  - code: safety-sharp-object
+    name: Unsafe sharp object
+    pass: "<0.7"          # sickles, pruning shears, harvesting blades are standard
+    flag: "0.7–0.9"
+    reject: ">=0.9"
+    note: Agricultural tools (sickles, shears, blades) are expected in most frames.
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=1.0"         # agricultural steps are long — walk row, inspect, harvest
+    flag: "0.5–1.0"
+    reject: "<0.5"
+    note: Farming tasks are measured in minutes. Narration density is naturally lower.

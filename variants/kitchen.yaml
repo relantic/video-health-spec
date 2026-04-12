@@ -1,0 +1,43 @@
+# Kitchen variant — cooking and food preparation environments.
+# Applies on top of the egocentric or manipulation profile.
+#
+# Use case: EPIC-KITCHENS style datasets, Human Archive restaurant data,
+# home cooking recordings. Sharp objects (knives) are expected tools,
+# not safety hazards. Steam and smoke affect visibility.
+
+name: kitchen
+base_profile: egocentric
+
+overrides:
+
+  - code: safety-sharp-object
+    name: Unsafe sharp object
+    pass: "<0.8"          # knives are expected — only reject if nearly every frame has one
+    flag: "0.8–0.95"
+    reject: ">=0.95"
+    note: Knives, peelers, graters are standard kitchen tools. Only flag if object presence seems anomalous.
+
+  - code: quality-blurry
+    name: Video is blurry
+    pass: ">=8"           # looser — steam, smoke, and heat shimmer soften the image
+    flag: "3–8"
+    reject: "<3"
+
+  - code: quality-bad-exposure
+    name: Exposure out of range
+    pass: "0.15–0.85"     # wider range — stove flames, oven lights, dim pantries
+    flag: "0.08–0.92"
+    reject: "<0.08"
+
+  - code: egoexo-sparse-narration
+    name: Narration too sparse
+    pass: ">=3.0"         # denser — cooking steps are fast and sequential
+    flag: "1.5–3.0"
+    reject: "<1.5"
+    note: "Cooking narration should capture each micro-step: crack egg, whisk, pour into pan, flip."
+
+  - code: quality-duration-out-of-bounds
+    name: Duration out of bounds
+    pass: "60–900"        # up to 15min — full recipes
+    flag: "30–60"
+    reject: "<30"
