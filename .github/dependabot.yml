@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # GitHub Actions: batch minor/patch into one PR, majors get individual PRs,
+  # 7-day cooldown so a freshly-published (possibly compromised) action soaks first.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
