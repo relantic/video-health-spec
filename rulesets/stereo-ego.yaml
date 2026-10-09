@@ -1,0 +1,453 @@
+# Stereo-ego profile — head-mounted stereo RGB + IMU recordings delivered as
+# MCAP (ROS 2) or as a per-episode directory packet, reviewed against a
+# customer Pass/Fail rubric. Each rule carries the rubric id it implements.
+#
+# Codes keep the category prefixes of the other profiles (quality-*,
+# multistream-*, metadata-*, training-*) and add three for this data:
+#   sensor-*       IMU channel checks
+#   calibration-*  calibration package and in-data calibration checks
+#   legal-*        contractual constraints that are checkable from metadata
+#
+# A rubric FAIL is `critical` (REJECT — the episode is excluded); a FLAG is
+# `medium` (attestation or human scoring needed). The validator emits
+# `video-health/stereo-ego/{code}` with `details.verbatims.rubric_id`.
+#
+# Base quality/privacy/safety checks from the egocentric profile still apply to
+# each video stream; this profile adds the packet-level rules only.
+
+base_profile: egocentric
+
+rules:
+
+  # ── Technical ──
+
+  - code: quality-camera-mount-off-axis
+    rubric: T01
+    name: Camera mounting and angle
+    metric: hand_centroid_x_median
+    type: float
+    pass: "0.30–0.70"
+    flag: otherwise
+    note: Median hand position in the central 40% of frame width; camera pitch against the kit's approved range
+
+  - code: multistream-stereo-missing
+    rubric: T01a
+    name: Stereo RGB capture
+    metric: video_streams
+    type: int
+    pass: ">=2"
+    reject: "<2"
+    note: Two head-mounted RGB streams; monochrome or depth streams do not count
+
+  - code: quality-resolution-below-spec
+    rubric: T02
+    name: Resolution
+    metric: height
+    type: int
+    pass: ">=1200"
+    reject: "<1200"
+    note: ≥1920×1200 per camera
+
+  - code: quality-frame-rate-below-spec
+    rubric: T03
+    name: Frame rate
+    metric: fps_dev_pct
+    type: float
+    pass: "<=1.0"
+    reject: ">1.0"
+    note: Nominal ≥30 fps and measured within ±1%
+
+  - code: quality-frame-timing-jitter
+    rubric: T04
+    name: Frame timing
+    metric: interval_p99_dev_ms
+    type: float
+    unit: milliseconds
+    pass: "<=10"
+    reject: ">10"
+
+  - code: quality-duration-out-of-bounds
+    rubric: T05
+    name: Episode duration
+    metric: duration_sec
+    type: float
+    pass: "30–1800"
+    reject: otherwise
+
+  - code: quality-fov-below-spec
+    rubric: T06
+    name: Field of view
+    metric: hfov_deg
+    type: float
+    pass: ">=110"
+    reject: "<110"
+    note: Also vfov_deg ≥80; computed from delivered intrinsics
+
+  - code: quality-projection-not-rectilinear
+    rubric: T07
+    name: Projection
+    metric: projection
+    type: bool
+    pass: true
+    reject: false
+    note: Pinhole or rectified as delivered; native fisheye fails
+
+  - code: quality-codec-not-approved
+    rubric: T08
+    name: Codec
+    metric: codec_approved
+    type: bool
+    pass: true
+    flag: false
+    note: AV1 or H.265; H.264 flags for original-source attestation
+
+  - code: quality-low-bitrate
+    rubric: T09
+    name: Bitrate
+    metric: bitrate_mbps
+    type: float
+    pass: ">=10"
+    reject: "<10"
+
+  - code: quality-b-frames-present
+    rubric: T10
+    name: No B-frames
+    metric: has_b_frames
+    type: bool
+    pass: false
+    reject: true
+
+  - code: quality-gop-too-long
+    rubric: T11
+    name: GOP / keyframe interval
+    metric: gop_frames_max
+    type: int
+    pass: "<=30"
+    reject: ">30"
+
+  - code: multistream-stream-missing
+    rubric: T12
+    name: Required streams
+    metric: missing_stream_count
+    type: int
+    pass: "0"
+    reject: ">0"
+    note: Stereo video, left/right camera info, /ego/imu, /tf_static, /ego/vio/system_info
+
+  - code: quality-missing-imu
+    rubric: T13a
+    name: IMU present and head-mounted
+    metric: imu_in_transform_tree
+    type: bool
+    pass: true
+    flag: false
+
+  - code: sensor-imu-rate-low
+    rubric: T13b
+    name: IMU sample rate
+    metric: imu_rate_hz
+    type: float
+    pass: ">=200"
+    reject: "<200"
+
+  - code: sensor-imu-dropouts
+    rubric: T13c
+    name: IMU continuity
+    metric: imu_completeness
+    type: ratio
+    pass: ">=0.999"
+    reject: "<0.999"
+    note: Also no gap over 10 ms
+
+  - code: sensor-imu-channels-invalid
+    rubric: T13d
+    name: IMU raw channels valid
+    metric: imu_channels_valid
+    type: bool
+    pass: true
+    reject: false
+    note: 3-axis gyro and accel, units declared, no NaN/Inf, no saturation
+
+  - code: sensor-imu-gravity-invalid
+    rubric: T13e
+    name: IMU gravity sanity check
+    metric: still_accel_norm
+    type: float
+    unit: m/s^2
+    pass: "9.31–10.31"
+    reject: otherwise
+    note: Mean over ≥3 low-motion windows; direction must imply a downward-facing camera
+
+  - code: multistream-clock-domain-mismatch
+    rubric: T14a
+    name: Shared clock domain
+    metric: overlap_ratio
+    type: ratio
+    pass: ">=0.99"
+    reject: "<0.99"
+
+  - code: multistream-sync-drift
+    rubric: T14b
+    name: Stereo left/right sync
+    metric: pairs_over_10ms
+    type: int
+    pass: "0"
+    reject: ">0"
+
+  - code: quality-imu-desync
+    rubric: T14c
+    name: Camera–IMU alignment
+    metric: cam_imu_lag_ms
+    type: float
+    unit: milliseconds
+    pass: "<=10"
+    flag: "within one frame period"
+    reject: otherwise
+
+  - code: sensor-wireless-latency
+    rubric: T14d
+    name: Wireless latency
+    metric: wireless_latency_ms
+    type: float
+    pass: "<10"
+    reject: ">=10"
+    note: Kit-level bench measurement; not assessable from the packet
+
+  - code: quality-audio-present
+    rubric: T15
+    name: Audio
+    metric: audio_present
+    type: bool
+    pass: false
+    flag: true
+    note: A silent track flags for confirmation; audible audio without approval rejects
+
+  - code: quality-data-corrupt
+    rubric: T16
+    name: Data integrity
+    metric: integrity_problems
+    type: int
+    pass: "0"
+    reject: ">0"
+
+  # ── Calibration ──
+
+  - code: calibration-not-unit-specific
+    rubric: K01
+    name: Unit-specific calibration
+    metric: unit_specific
+    type: bool
+    pass: true
+    reject: false
+
+  - code: calibration-status-invalid
+    rubric: K02
+    name: Calibration status
+    metric: calibration_pass_in_date
+    type: bool
+    pass: true
+    reject: false
+
+  - code: calibration-cadence-exceeded
+    rubric: K03
+    name: Calibration dates and cadence
+    metric: calibration_cycle_days
+    type: int
+    pass: "<=31"
+    reject: ">31"
+
+  - code: quality-invalid-intrinsics
+    rubric: K04
+    name: Intrinsics
+    metric: intrinsics_valid
+    type: bool
+    pass: true
+    reject: false
+
+  - code: multistream-calibration-missing
+    rubric: K05
+    name: Extrinsics
+    metric: calibration_valid
+    type: bool
+    pass: true
+    reject: false
+
+  - code: calibration-baseline-mismatch
+    rubric: K06
+    name: Baseline and camera-to-IMU
+    metric: baseline_deviation
+    type: ratio
+    pass: "<=0.02"
+    reject: ">0.02"
+    note: Needs the hardware spec baseline; flags when none is supplied
+
+  - code: calibration-package-incomplete
+    rubric: K07
+    name: Calibration package
+    metric: package_missing_count
+    type: int
+    pass: "0"
+    reject: ">0"
+
+  - code: calibration-reprojection-high
+    rubric: K08
+    name: Reprojection error
+    metric: reprojection_median_px
+    type: float
+    pass: "<=0.50"
+    reject: ">0.50"
+    note: Also p95 ≤2.00 (K09), edge p95 ≤5.00 (K11), cross-camera median ≤1.50 / p95 ≤5.00 (K12)
+
+  - code: calibration-corners-low
+    rubric: K10
+    name: Valid corners
+    metric: valid_corners_within_3px_ratio
+    type: ratio
+    pass: ">=0.95"
+    reject: "<0.95"
+
+  - code: calibration-pose-diversity-low
+    rubric: K13
+    name: Pose diversity and fit/validation split
+    metric: pose_diversity_ok
+    type: bool
+    pass: true
+    reject: false
+    note: Needs the calibration recordings
+
+  - code: calibration-stereo-misaligned
+    rubric: K14
+    name: In-data stereo alignment
+    metric: median_abs_dy_px
+    type: float
+    unit: pixels
+    pass: "<=1"
+    reject: ">1"
+
+  # ── Metadata ──
+
+  - code: metadata-field-missing
+    rubric: M01
+    name: Episode metadata
+    metric: missing_field_count
+    type: int
+    pass: "0"
+    reject: ">0"
+
+  - code: metadata-timestamp-mismatch
+    rubric: M02
+    name: Timestamps
+    metric: timestamp_diff_sec
+    type: float
+    pass: "<=1"
+    reject: ">1"
+
+  - code: metadata-location-incomplete
+    rubric: M03
+    name: Location metadata
+    metric: missing_location_count
+    type: int
+    pass: "0"
+    reject: ">0"
+
+  - code: metadata-environment-invalid
+    rubric: M04
+    name: Environment tags
+    metric: environment_valid
+    type: bool
+    pass: true
+    reject: false
+
+  - code: metadata-naics-invalid
+    rubric: M05
+    name: NAICS code
+    metric: naics_valid
+    type: bool
+    pass: true
+    reject: false
+
+  - code: metadata-device-mismatch
+    rubric: M06
+    name: Device metadata
+    metric: device_match
+    type: bool
+    pass: true
+    reject: false
+
+  - code: metadata-operator-incomplete
+    rubric: M07
+    name: Operator metadata
+    metric: missing_operator_count
+    type: int
+    pass: "0"
+    reject: ">0"
+
+  - code: metadata-skill-group-invalid
+    rubric: M08
+    name: Skill group
+    metric: skill_group_valid
+    type: bool
+    pass: true
+    reject: false
+
+  - code: metadata-not-embedded
+    rubric: M14
+    name: Embedded metadata
+    metric: metadata_embedded
+    type: bool
+    pass: true
+    flag: false
+    note: Sidecar-only metadata flags; none at all rejects
+
+  # ── Visual (packet-level inputs; the egocentric base profile covers the rest) ──
+
+  - code: training-no-hands-visible
+    rubric: V01
+    name: Hand visibility share
+    metric: hand_visible_ratio
+    type: ratio
+    pass: ">=0.95"
+    reject: "<0.95"
+
+  - code: training-hand-gap
+    rubric: V02
+    name: No long hand gaps
+    metric: longest_hand_gap_sec
+    type: float
+    pass: "<10"
+    reject: ">=10"
+
+  - code: training-static-video
+    rubric: V10
+    name: No idling
+    metric: longest_static_run_sec
+    type: float
+    pass: "<10"
+    flag: ">=10"
+
+  - code: quality-blurry
+    rubric: V12
+    name: Image quality
+    metric: blurry_frame_ratio
+    type: ratio
+    pass: "<0.25"
+    reject: ">=0.25"
+
+  # ── Legal ──
+
+  - code: legal-residential-footage
+    rubric: L06
+    name: Residential
+    metric: residential
+    type: bool
+    pass: false
+    reject: true
+
+  - code: legal-region-not-approved
+    rubric: L08
+    name: Approved geography
+    metric: region_approved
+    type: bool
+    pass: true
+    reject: false
+    note: LATAM, Eastern Europe, Africa or the Middle East

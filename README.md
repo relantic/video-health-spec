@@ -6,7 +6,7 @@
 
 Training video gets passed between teams with no shared definition of "good." One side ships data they consider clean; the other re-evaluates it with their own criteria. Gaps surface late. This spec fixes that — a shared taxonomy of failure modes so both sides can agree on what to check before data changes hands.
 
-YAML throughout. 7 profiles, 12 variants. Results describe a **packet** — a bag of aligned files (video, IMU, sidecars) reviewed together — which makes it a natural fit for WebDataset and other sharded distribution formats.
+YAML throughout. 8 profiles, 12 variants. Results describe a **packet** — a bag of aligned files (video, IMU, sidecars) reviewed together — which makes it a natural fit for WebDataset and other sharded distribution formats.
 
 ## What it does
 
@@ -100,6 +100,7 @@ Self-contained YAML rulesets with default thresholds. No inheritance — copy an
 | [pedestrian](rulesets/pedestrian.yaml) | Ego navigation — sidewalks, crosswalks, indoor wayfinding |
 | [delivery](rulesets/delivery.yaml) | Delivery robots — sidewalk bots, last-mile autonomous vehicles |
 | [aerial](rulesets/aerial.yaml) | Drone / aerial — mapping, inspection, overflight |
+| [stereo-ego](rulesets/stereo-ego.yaml) | Head-mounted stereo RGB + IMU packets (MCAP / directory) reviewed against a Pass/Fail rubric; each rule carries its rubric id |
 
 ## Rules
 
